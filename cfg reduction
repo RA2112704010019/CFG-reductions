@@ -1,0 +1,86 @@
+def eliminate_null_productions(grammar):
+    nullable = {non_terminal for non_terminal, productions in grammar.items() if "" in productions}
+
+    while True:
+        updated_nullable = nullable.copy()
+
+        for non_terminal, productions in grammar.items():
+            for production in productions:
+                if all(symbol in nullable for symbol in production):
+                    updated_nullable.add(non_terminal)
+
+        if updated_nullable == nullable:
+            break
+
+        nullable = updated_nullable
+
+    new_grammar = {non_terminal: {production for production in productions if not any(symbol in nullable for symbol in production)} for non_terminal, productions in grammar.items()}
+
+    return new_grammar, nullable
+
+
+def eliminate_unit_productions(grammar):
+    unit_productions = {non_terminal: set() for non_terminal in grammar}
+    non_unit_productions = {non_terminal: set() for non_terminal in grammar}
+
+    for non_terminal, productions in grammar.items():
+        for production in productions:
+            if len(production) == 1 and production.isupper():
+                unit_productions[non_terminal].add(production)
+            else:
+                non_unit_productions[non_terminal].add(production)
+
+    for non_terminal, unit_set in unit_productions.items():
+        while unit_set:
+            unit = unit_set.pop()
+            non_unit_productions[non_terminal].update(non_unit_productions.get(unit, set()))
+            unit_set.difference_update({u for u in non_unit_productions.get(unit, set()) if len(u) == 1 and u.isupper()})
+
+    new_grammar = {non_terminal: non_unit_productions[non_terminal] for non_terminal in grammar}
+
+    return new_grammar
+
+
+def get_user_input():
+    grammar = {}
+    non_terminals = set()
+
+    while True:
+        non_terminal = input("Enter a non-terminal (or 'done' to finish): ").strip()
+
+        if non_terminal.lower() == 'done':
+            break
+
+        if non_terminal.isupper():
+            if non_terminal not in non_terminals:
+                non_terminals.add(non_terminal)
+                productions = input(f"Enter productions for {non_terminal}: ").split('|')
+                grammar[non_terminal] = {production.strip() for production in productions}
+
+            else:
+                print("Non-terminal already entered. Please enter a new one.")
+        else:
+            print("Invalid non-terminal. Non-terminals should be uppercase.")
+
+    return grammar
+
+
+# Get user input for the context-free grammar
+user_grammar = get_user_input()
+
+# Eliminate null productions
+reduced_grammar_null, nullable_symbols = eliminate_null_productions(user_grammar)
+
+# Print output for null productions
+print("\nNull Production Output:")
+print("Nullable symbols:", nullable_symbols)
+for non_terminal, productions in reduced_grammar_null.items():
+    print(f"{non_terminal} -> {' | '.join(productions)}")
+
+# Eliminate unit productions
+reduced_grammar_unit = eliminate_unit_productions(user_grammar)
+
+# Print output for unit productions
+print("\nUnit Production Output:")
+for non_terminal, productions in reduced_grammar_unit.items():
+    print(f"{non_terminal} -> {' | '.join(productions)}")
